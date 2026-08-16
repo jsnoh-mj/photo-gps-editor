@@ -1,4 +1,4 @@
-# Photo GPS Editor
+# Photo GPS Editor & File renamer
 
 사진/동영상의 GPS 위치와 파일명을 로컬에서 바로 확인·수정하는 단일 HTML 도구입니다.
 서버나 설치 없이 `photo-gps-editor.html` 파일을 **Chrome 또는 Edge**로 열기만 하면 동작합니다.
@@ -16,6 +16,7 @@
 - **썸네일 1x/4x 보기 전환**: 4x 모드에서 사진/영상 클릭 시 최대 720px 미리보기(영상은 소리 포함 재생)
 - **파일명 자동 정리 (4x 모드 전용)**: `YYYYMMDD_HHMMSS_설명부.ext` 형식으로 폴더 전체 일괄 보정, 또는 파일명/설명을 더블클릭해 개별 수정
 - **최근 폴더 자동 기억**: 다음 실행 시 이전 폴더를 자동으로 다시 엽니다 (최초 1회는 직접 선택 필요)
+- 다양한 기기에서 생성된 file을 YYYYMMDD_HHMMSS 형태의 file로 일괄 변경 및 사진/영상을 미리보기 하면서 file명에 comment추가 기능.
 
 ## 사용법
 
