@@ -1,0 +1,2137 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>Photo GPS Editor</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/piexifjs/1.0.6/piexif.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+  :root{
+    --bg:#1c2a40;
+    --panel:#233450;
+    --panel2:#2b3d5c;
+    --border:#3d5478;
+    --text:#f2f5fa;
+    --dim:#a9bcd6;
+    --accent:#5fb3ff;
+    --accent2:#4fd1a5;
+    --link:#ffcc66;
+    --warn:#e0a458;
+    --danger:#ff8a80;
+    --mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Malgun Gothic",sans-serif;
+    font-size:14px;
+  }
+  header{
+    padding:18px 24px;
+    border-bottom:1px solid var(--border);
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:20px;
+    flex-wrap:wrap;
+    background:linear-gradient(180deg, var(--panel), var(--panel2));
+    box-shadow:0 1px 0 rgba(0,0,0,.25), 0 6px 18px -8px rgba(0,0,0,.35);
+    position:sticky;
+    top:0;
+    z-index:5;
+  }
+  .brand{display:flex;align-items:center;gap:13px;}
+  .logo{
+    width:40px;height:40px;border-radius:11px;
+    background:linear-gradient(135deg, var(--accent), #2d6fd6);
+    display:flex;align-items:center;justify-content:center;
+    color:#0a1420;
+    box-shadow:0 3px 10px -2px rgba(95,179,255,.45), inset 0 1px 0 rgba(255,255,255,.25);
+    flex-shrink:0;
+  }
+  .brand-text h1{font-size:18.5px;margin:0;font-weight:700;letter-spacing:-.2px;}
+  .brand-text .sub{margin-top:3px;display:flex;align-items:center;gap:9px;flex-wrap:wrap;}
+  .chip{
+    background:rgba(255,255,255,.07);
+    border:1px solid var(--border);
+    padding:2px 9px;
+    border-radius:20px;
+    font-size:10.5px;
+    letter-spacing:.2px;
+    color:var(--dim);
+    white-space:nowrap;
+  }
+  .header-controls{display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
+  .reopen-banner{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    flex-wrap:wrap;
+    background:#2a3f2e;
+    border-bottom:1px solid #3d5a42;
+    color:#d8f0dc;
+    font-size:12.5px;
+    padding:9px 20px;
+  }
+  .reopen-banner button{padding:5px 12px;font-size:12px;}
+  .reopen-banner strong{color:var(--link);}
+  h1{font-size:16px;margin:0;font-weight:600;letter-spacing:.2px;}
+  .sub{color:var(--dim);font-size:12px;}
+  button{
+    background:var(--accent);
+    color:#0a0d11;
+    border:none;
+    border-radius:6px;
+    padding:8px 14px;
+    font-size:13px;
+    font-weight:600;
+    cursor:pointer;
+    transition:filter .15s ease, transform .1s ease;
+    box-shadow:0 1px 2px rgba(0,0,0,.2);
+  }
+  button:hover{filter:brightness(1.08);}
+  button:active{transform:translateY(1px);}
+  button.secondary{background:var(--panel2);color:var(--text);border:1px solid var(--border);}
+  button.danger{background:var(--danger);color:#1a0d0d;}
+  button:disabled{opacity:.4;cursor:not-allowed;}
+  input[type=text]{
+    background:var(--panel2);
+    border:1px solid var(--border);
+    color:var(--text);
+    border-radius:6px;
+    padding:7px 9px;
+    font-family:var(--mono);
+    font-size:12.5px;
+  }
+  main{padding:18px 20px 60px;max-width:1400px;margin:0 auto;}
+  .bulk{
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:14px 16px;
+    margin-bottom:18px;
+    display:flex;
+    align-items:flex-start;
+    gap:20px;
+    flex-wrap:wrap;
+  }
+  .bulk input[type=text]{width:340px;}
+  .bulk .label{color:var(--dim);font-size:12.5px;}
+  .count{color:var(--dim);font-size:12.5px;}
+  .map-preview{
+    display:none;
+    width:480px;
+    height:340px;
+    border:1px solid var(--border);
+    border-radius:8px;
+    overflow:hidden;
+    margin-top:2px;
+  }
+  .map-preview iframe{width:100%;height:100%;border:0;}
+  .selbar{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    margin-bottom:14px;
+    flex-wrap:wrap;
+  }
+  .selbar .count{font-size:12.5px;}
+  .list{
+    border:1px solid var(--border);
+    border-radius:10px;
+    overflow:hidden;
+  }
+  .row{
+    display:grid;
+    grid-template-columns:26px 56px 1fr 320px 62px 70px;
+    align-items:center;
+    gap:10px;
+    padding:8px 12px;
+    border-bottom:1px solid var(--border);
+    background:var(--panel);
+  }
+  .row input[type=checkbox]{width:16px;height:16px;cursor:pointer;}
+  .row:nth-child(even){background:var(--panel2);}
+  .row.head{
+    background:#17233a;
+    color:var(--dim);
+    font-size:11.5px;
+    text-transform:uppercase;
+    letter-spacing:.5px;
+  }
+  .thumb{
+    width:50px;height:50px;object-fit:cover;border-radius:5px;border:1px solid var(--border);
+    background:#000;
+  }
+  .thumb-fallback{
+    display:flex;align-items:center;justify-content:center;
+    font-size:20px;background:var(--panel2);
+  }
+  .list.thumb-4x .row{
+    grid-template-columns:26px 200px 1fr 320px 62px 70px;
+  }
+  .list.thumb-4x .thumb,
+  .list.thumb-4x .thumb-fallback{
+    width:200px;height:200px;border-radius:8px;
+  }
+  .list.thumb-4x .thumb-fallback{font-size:64px;}
+  .list.thumb-4x .thumb,
+  .list.thumb-4x .thumb-fallback{
+    cursor:zoom-in;
+    transition:opacity .1s ease;
+  }
+  .list.thumb-4x .thumb:hover,
+  .list.thumb-4x .thumb-fallback:hover{
+    opacity:.85;
+  }
+
+  /* ---- preview modal (click a 4x thumbnail to see a larger image / play video) ---- */
+  .preview-modal{
+    display:none;
+    position:fixed;
+    inset:0;
+    background:rgba(6,10,18,.82);
+    z-index:60;
+    align-items:center;
+    justify-content:center;
+    padding:24px;
+  }
+  .preview-modal-inner{
+    position:relative;
+    max-width:100%;
+    max-height:100%;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:10px;
+  }
+  .preview-modal-name{
+    color:var(--dim);
+    font-family:var(--mono);
+    font-size:12px;
+    max-width:720px;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+  .preview-modal-media{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    min-width:120px;
+    min-height:80px;
+  }
+  .preview-close{
+    position:absolute;
+    top:-14px;
+    right:-14px;
+    width:32px;height:32px;
+    border-radius:50%;
+    background:var(--panel2);
+    border:1px solid var(--border);
+    color:var(--text);
+    font-size:14px;
+    padding:0;
+    line-height:1;
+    box-shadow:0 2px 8px rgba(0,0,0,.4);
+  }
+  .fname{
+    font-family:var(--mono);
+    font-size:12.5px;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+  .fname-cell{display:flex;flex-direction:column;gap:2px;min-width:0;}
+  .fdesc{
+    font-family:var(--mono);
+    font-size:12.5px;
+    color:var(--dim);
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+  .fdesc-empty{font-style:italic;opacity:.7;}
+  .list.thumb-4x .fname,
+  .list.thumb-4x .fdesc{cursor:text;}
+  .list.thumb-4x .fname:hover,
+  .list.thumb-4x .fdesc:hover{color:var(--accent);}
+  .fname-edit,
+  .fdesc-edit{display:flex;align-items:center;gap:4px;}
+  .fname-edit-input,
+  .fdesc-edit-input{
+    flex:1;min-width:0;
+    font-family:var(--mono);font-size:12px;
+    padding:3px 6px;
+  }
+  .fname-edit-ext{color:var(--dim);font-family:var(--mono);font-size:11px;flex-shrink:0;}
+  .fname-edit-ok,.fdesc-edit-ok,
+  .fname-edit-cancel,.fdesc-edit-cancel{
+    padding:3px 8px;font-size:11px;width:auto;flex-shrink:0;
+  }
+
+  /* ---- batch rename modal ---- */
+  .rename-modal{
+    display:none;
+    position:fixed;
+    inset:0;
+    background:rgba(6,10,18,.72);
+    z-index:55;
+    align-items:center;
+    justify-content:center;
+    padding:24px;
+  }
+  .rename-modal-inner{
+    width:100%;
+    max-width:900px;
+    max-height:80vh;
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:14px;
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
+    box-shadow:0 20px 60px rgba(0,0,0,.5);
+  }
+  .rename-modal-header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:14px;
+    padding:14px 18px;
+    border-bottom:1px solid var(--border);
+    background:var(--panel2);
+    flex-wrap:wrap;
+  }
+  .rename-modal-header h2{margin:0;font-size:15px;font-weight:700;}
+  .rename-modal-body{flex:1;overflow-y:auto;padding:8px 18px;}
+  .rename-row{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:6px 0;
+    border-bottom:1px solid var(--border);
+    font-family:var(--mono);
+    font-size:12px;
+  }
+  .rename-old{flex:1;min-width:0;color:var(--dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .rename-arrow{color:var(--accent);flex-shrink:0;}
+  .rename-new{flex:1;min-width:0;color:var(--accent2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .rowinput{width:100%;}
+  .apply-btn{padding:6px 10px;font-size:12px;}
+  .map-btn{padding:6px 8px;font-size:12px;white-space:nowrap;}
+  .map-btn:disabled{opacity:.35;}
+  .msg{font-size:11px;margin-top:3px;}
+  .msg.ok{color:var(--accent2);}
+  .msg.err{color:var(--danger);}
+  .empty-state{
+    padding:40px 20px;
+    text-align:center;
+    color:var(--dim);
+  }
+  .badge{
+    display:inline-block;
+    font-size:10.5px;
+    padding:2px 7px;
+    border-radius:20px;
+    background:var(--panel2);
+    border:1px solid var(--border);
+    color:var(--dim);
+    margin-left:8px;
+  }
+  .note{
+    color:var(--dim);
+    font-size:11.5px;
+    margin-top:10px;
+    line-height:1.6;
+  }
+
+  /* ---- GPS map modal ---- */
+  .map-modal{
+    display:none;
+    position:fixed;
+    inset:0;
+    background:rgba(6,10,18,.72);
+    z-index:50;
+    align-items:center;
+    justify-content:center;
+    padding:24px;
+  }
+  .map-modal-inner{
+    width:100%;
+    max-width:1300px;
+    height:100%;
+    max-height:860px;
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:14px;
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
+    box-shadow:0 20px 60px rgba(0,0,0,.5);
+  }
+  .map-modal-header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:14px;
+    padding:14px 18px;
+    border-bottom:1px solid var(--border);
+    background:var(--panel2);
+    flex-wrap:wrap;
+  }
+  .map-modal-header h2{margin:0;font-size:15px;font-weight:700;}
+  .map-modal-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+  .map-modal-body{
+    flex:1;
+    display:flex;
+    min-height:0;
+  }
+  .map-modal-map{
+    flex:1;
+    min-width:0;
+  }
+  .map-modal-side{
+    width:300px;
+    flex-shrink:0;
+    border-left:1px solid var(--border);
+    background:var(--panel);
+    padding:14px;
+    overflow-y:auto;
+  }
+  .map-change-row{
+    display:flex;
+    flex-direction:column;
+    gap:4px;
+    padding:8px 10px;
+    border:1px solid var(--border);
+    border-radius:8px;
+    background:var(--panel2);
+    margin-bottom:8px;
+  }
+  .map-change-name{
+    font-family:var(--mono);
+    font-size:11.5px;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+  .map-change-coord{color:var(--accent2);font-family:var(--mono);font-size:11px;}
+  .map-change-revert{align-self:flex-start;padding:3px 9px;font-size:11px;}
+  .map-selected-box{
+    border:1px solid var(--accent);
+    border-radius:8px;
+    background:var(--panel2);
+    padding:10px;
+    margin-bottom:14px;
+  }
+  .map-selected-box input[type=text]{width:100%;margin:6px 0 8px;}
+  .map-selected-box button{width:100%;padding:7px;font-size:12px;}
+  .map-group-filelist{max-height:180px;overflow-y:auto;margin:6px 0 10px;}
+  .map-group-file{
+    display:flex;align-items:center;justify-content:space-between;gap:6px;
+    padding:5px 0;border-bottom:1px solid var(--border);font-size:11.5px;
+  }
+  .map-group-file span{
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+    font-family:var(--mono);flex:1;min-width:0;
+  }
+  .map-group-file button{width:auto;padding:3px 8px;font-size:10.5px;flex-shrink:0;}
+  .gps-dot-tooltip{
+    font-size:11px;
+    font-family:var(--mono);
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="logo">
+      <svg width="21" height="21" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M4 8.6c0-.9.72-1.6 1.6-1.6h2.1l1.06-1.6c.3-.44.79-.7 1.32-.7h3.84c.53 0 1.02.26 1.32.7L16.3 7h2.1c.88 0 1.6.72 1.6 1.6v8.2c0 .88-.72 1.6-1.6 1.6H5.6c-.88 0-1.6-.72-1.6-1.6V8.6Z" stroke="white" stroke-width="1.6" stroke-linejoin="round"/>
+        <circle cx="12" cy="13" r="3.1" stroke="white" stroke-width="1.6"/>
+      </svg>
+    </div>
+    <div class="brand-text">
+      <h1>Photo GPS Editor</h1>
+      <div class="sub">
+        JPEG/MP4/MOV GPS 위치 조회 · 일괄 수정
+        <span class="chip">Chrome / Edge · 로컬 실행</span>
+      </div>
+    </div>
+  </div>
+  <div class="header-controls">
+    <button id="pickFolderBtn">📁 폴더 선택</button>
+    <span id="folderName" class="sub"></span>
+    <span id="fileCount" class="count"></span>
+  </div>
+</header>
+
+<div class="reopen-banner" id="reopenBanner" style="display:none;">
+  <span>📂 이전에 사용한 폴더 <strong id="reopenName"></strong>를 계속 사용하려면 접근을 다시 허용해주세요.</span>
+  <button id="reopenBtn">다시 열기</button>
+  <button id="reopenDismiss" class="secondary">닫기</button>
+</div>
+
+<main>
+  <div class="bulk">
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <span class="label">대표 GPS 위치:</span>
+        <input type="text" id="bulkInput" placeholder="예) 38.6427, 34.8442  또는 구글맵 URL 붙여넣기">
+      </div>
+      <div class="map-preview" id="mapPreviewWrap">
+        <iframe id="mapPreviewFrame" src="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      <button id="bulkApplyAllBtn" class="secondary">전체 파일에 일괄 적용</button>
+      <button id="bulkApplySelectedBtn" class="secondary" disabled>선택한 파일에 적용 (<span id="selectedCountInline">0</span>개)</button>
+      <button id="mapAllBtn" class="secondary">🗺️ GPS 있는 파일 전체 지도에서 보기</button>
+      <span id="bulkMsg" class="msg"></span>
+    </div>
+  </div>
+
+  <div class="selbar" id="selbar" style="display:none;">
+    <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+      <input type="checkbox" id="selectAllCheckbox"> <span class="sub">전체 선택</span>
+    </label>
+    <span class="count" id="selectedCountText">0개 선택됨</span>
+    <button id="mapSelectedBtn" class="secondary" disabled>🗺️ 선택 파일만 지도에서 보기</button>
+    <label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin-left:auto;">
+      <input type="checkbox" id="thumbSizeToggle"> <span class="sub">썸네일 4x 크기로 보기</span>
+    </label>
+    <button id="batchRenameBtn" class="secondary" style="display:none;">📝 파일명 일괄 보정</button>
+  </div>
+
+  <div class="list" id="list">
+    <div class="empty-state">먼저 상단의 "폴더 선택" 버튼으로 사진이 들어있는 폴더를 선택하세요.<br>
+    (JPG/JPEG, PNG, MP4, MOV 파일이 인식됩니다. PNG은 GPS 미지원, 파일명/설명 기능만 지원됩니다. 쓰기 권한을 요청하는 창이 뜨면 허용해 주세요.)</div>
+  </div>
+
+  <div class="note">
+    입력창에는 다음 두 가지 형식을 자동 인식합니다:<br>
+    1) 구글맵에서 우클릭 → 좌표 복사한 형태: <code>38.64274551638461, 34.84419474880832</code><br>
+    2) 구글맵 공유 URL을 그대로 붙여넣기 (핀 좌표 <code>!3d..!4d..</code> 우선 인식, 없으면 <code>@lat,lng</code> 사용)<br>
+    각 행 왼쪽 체크박스로 파일을 선택하면 "선택한 파일에 적용" 버튼으로 그 파일들에만 대표 위치를 지정할 수 있습니다.<br>
+    JPG/JPEG는 EXIF GPS 태그로, MP4/MOV는 iPhone 등이 쓰는 방식과 동일한 위치 메타데이터(<code>moov/udta/©xyz</code>)로 기록합니다 — 구글포토, exiftool 등 대부분의 프로그램이 인식합니다.<br>
+    스트리밍용으로 조각화(fragmented)된 MP4는 구조상 지원하지 않으며, 해당 파일은 적용 시 오류 메시지로 안내됩니다. 동영상 쓰기는 파일 내부 구조를 직접 재구성하는 작업이라, 중요한 원본은 미리 백업해두시길 권장합니다.<br>
+    "지도에서 보기" 기능은 API 키 없이 바로 쓸 수 있도록 구글맵 대신 OpenStreetMap 지도를 사용합니다 (조작 방식은 동일하게 마커를 드래그하면 됩니다).<br>
+    "썸네일 4x 크기로 보기"를 켠 상태에서 사진/영상을 클릭하면 긴 변 기준 최대 720px로 미리보기가 뜹니다. 사진은 확대 이미지, 영상은 소리와 함께 재생됩니다.<br>
+    4x 모드에서는 파일명을 <code>YYYYMMDD_HHMMSS_설명부.ext</code> 형태로 맞추는 기능도 켜집니다. "파일명 일괄 보정"으로 폴더 전체를 한 번에 정리하거나, 파일명/설명 부분을 각각 더블클릭해서 그 파일 하나만 수정할 수 있습니다 (설명 수정은 파일명이 이미 규칙에 맞는 경우에만 가능). PNG도 목록에는 표시되지만 GPS 기능은 지원하지 않고 파일명/설명 기능만 사용할 수 있습니다.<br>
+    DJI Action, 인스타 루나 등 파일명 중간에 촬영시각과 1글자 코드(예: <code>_D</code>)가 끼어있는 카메라 파일은, 촬영일시를 못 찾아 파일 생성시간으로 대체할 때 그 중복된 시각·코드 부분을 자동으로 지웁니다.
+  </div>
+</main>
+
+<div class="map-modal" id="mapModal">
+  <div class="map-modal-inner">
+    <div class="map-modal-header">
+      <h2>📍 GPS 위치 확인 · 수정</h2>
+      <div class="map-modal-actions">
+        <span id="mapModalCount" class="sub"></span>
+        <button id="mapModalApplyBtn" disabled>변경사항 반영</button>
+        <button id="mapModalCloseBtn" class="secondary">닫기</button>
+      </div>
+    </div>
+    <div class="map-modal-body">
+      <div class="map-modal-map" id="mapModalMap"></div>
+      <div class="map-modal-side">
+        <div class="sub" style="margin-bottom:10px;line-height:1.5;">
+          같은 위치 사진은 숫자가 적힌 하나의 점으로 표시됩니다. 점을 클릭하면 오른쪽에 파일 목록이 뜹니다.<br>
+          점을 드래그(또는 좌표 입력)하면 <b>전체가 함께</b> 이동하고, 목록에서 "이 사진만 이동"을 누르면 <b>그 사진 1장만</b> 따로 떼어내 옮길 수 있습니다.
+        </div>
+        <div id="mapSelectedBox" class="map-selected-box" style="display:none;"></div>
+        <div class="sub" style="margin-bottom:8px;">변경된 파일</div>
+        <div id="mapModalChanges"><div class="sub">아직 이동한 위치가 없습니다.</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="rename-modal" id="renameModal">
+  <div class="rename-modal-inner">
+    <div class="rename-modal-header">
+      <h2>📝 파일명 일괄 보정</h2>
+      <div class="map-modal-actions">
+        <span id="renameModalCount" class="sub"></span>
+        <button id="renameApplyBtn">일괄 변경</button>
+        <button id="renameCloseBtn" class="secondary">취소</button>
+      </div>
+    </div>
+    <div class="rename-modal-body" id="renameModalBody"></div>
+  </div>
+</div>
+
+<div class="preview-modal" id="previewModal">
+  <div class="preview-modal-inner">
+    <button id="previewCloseBtn" class="preview-close">✕</button>
+    <div class="preview-modal-name" id="previewName"></div>
+    <div class="preview-modal-media" id="previewMedia"></div>
+  </div>
+</div>
+
+<script>
+let dirHandle = null;
+let items = []; // {name, handle, gps:{lat,lon}|null, thumbUrl, selected}
+
+const listEl = document.getElementById('list');
+const folderNameEl = document.getElementById('folderName');
+const fileCountEl = document.getElementById('fileCount');
+const bulkInput = document.getElementById('bulkInput');
+const bulkMsg = document.getElementById('bulkMsg');
+const mapPreviewWrap = document.getElementById('mapPreviewWrap');
+const mapPreviewFrame = document.getElementById('mapPreviewFrame');
+const selbar = document.getElementById('selbar');
+const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+const selectedCountText = document.getElementById('selectedCountText');
+const selectedCountInline = document.getElementById('selectedCountInline');
+const bulkApplyAllBtn = document.getElementById('bulkApplyAllBtn');
+const bulkApplySelectedBtn = document.getElementById('bulkApplySelectedBtn');
+const reopenBanner = document.getElementById('reopenBanner');
+const mapAllBtn = document.getElementById('mapAllBtn');
+const mapSelectedBtn = document.getElementById('mapSelectedBtn');
+const thumbSizeToggle = document.getElementById('thumbSizeToggle');
+const batchRenameBtn = document.getElementById('batchRenameBtn');
+
+document.getElementById('pickFolderBtn').addEventListener('click', pickFolder);
+bulkApplyAllBtn.addEventListener('click', () => bulkApplyGroup(items, '전체'));
+bulkApplySelectedBtn.addEventListener('click', () => bulkApplyGroup(items.filter(i => i.selected), '선택한'));
+mapAllBtn.addEventListener('click', () => openGpsMap(items));
+mapSelectedBtn.addEventListener('click', () => openGpsMap(items.filter(i => i.selected)));
+thumbSizeToggle.addEventListener('change', () => {
+  const on = thumbSizeToggle.checked;
+  listEl.classList.toggle('thumb-4x', on);
+  batchRenameBtn.style.display = on ? 'inline-block' : 'none';
+});
+batchRenameBtn.addEventListener('click', openRenameModal);
+selectAllCheckbox.addEventListener('change', () => {
+  for(const item of items){
+    item.selected = selectAllCheckbox.checked;
+    if(item.checkboxEl) item.checkboxEl.checked = item.selected;
+  }
+  updateSelectedCount();
+});
+bulkInput.addEventListener('input', debounce(updateMapPreview, 400));
+
+function debounce(fn, ms){
+  let t;
+  return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
+}
+
+function updateMapPreview(){
+  const parsed = parseCoordInput(bulkInput.value);
+  if(parsed){
+    mapPreviewFrame.src = `https://maps.google.com/maps?q=${parsed.lat},${parsed.lon}&z=15&output=embed`;
+    mapPreviewWrap.style.display = 'block';
+  }else{
+    mapPreviewWrap.style.display = 'none';
+    mapPreviewFrame.src = '';
+  }
+}
+
+function updateSelectedCount(){
+  const n = items.filter(i => i.selected).length;
+  selectedCountText.textContent = n + '개 선택됨';
+  selectedCountInline.textContent = n;
+  bulkApplySelectedBtn.disabled = (n === 0);
+  mapSelectedBtn.disabled = (n === 0);
+}
+
+function isJpeg(name){
+  return /\.(jpe?g)$/i.test(name);
+}
+function isPng(name){
+  return /\.png$/i.test(name);
+}
+function isVideo(name){
+  return /\.(mp4|mov)$/i.test(name);
+}
+function getKind(name){
+  if(isJpeg(name)) return 'image';
+  if(isPng(name)) return 'png';
+  if(isVideo(name)) return 'video';
+  return null;
+}
+
+// ---------- binary helpers ----------
+function arrayBufferToBinaryString(buffer){
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  const chunk = 0x8000;
+  for(let i=0;i<bytes.length;i+=chunk){
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, i+chunk));
+  }
+  return binary;
+}
+function binaryStringToArrayBuffer(binary){
+  const len = binary.length;
+  const bytes = new Uint8Array(len);
+  for(let i=0;i<len;i++) bytes[i] = binary.charCodeAt(i) & 0xff;
+  return bytes.buffer;
+}
+
+// ---------- GPS <-> DMS ----------
+function dmsToDecimal(dms, ref){
+  const d = dms[0][0]/dms[0][1];
+  const m = dms[1][0]/dms[1][1];
+  const s = dms[2][0]/dms[2][1];
+  let dec = d + m/60 + s/3600;
+  if(ref === 'S' || ref === 'W') dec = -dec;
+  return dec;
+}
+function decToDms(deg){
+  const d = Math.floor(deg);
+  const minFloat = (deg - d) * 60;
+  const m = Math.floor(minFloat);
+  const s = (minFloat - m) * 60;
+  return [[d,1],[m,1],[Math.round(s*1000),1000]];
+}
+function buildGpsIfd(lat, lon){
+  const latRef = lat >= 0 ? 'N' : 'S';
+  const lonRef = lon >= 0 ? 'E' : 'W';
+  const g = {};
+  g[piexif.GPSIFD.GPSVersionID] = [2,3,0,0];
+  g[piexif.GPSIFD.GPSLatitudeRef] = latRef;
+  g[piexif.GPSIFD.GPSLatitude] = decToDms(Math.abs(lat));
+  g[piexif.GPSIFD.GPSLongitudeRef] = lonRef;
+  g[piexif.GPSIFD.GPSLongitude] = decToDms(Math.abs(lon));
+  return g;
+}
+function readGpsFromExif(exifDict){
+  const gps = exifDict && exifDict.GPS;
+  if(!gps || !gps[piexif.GPSIFD.GPSLatitude] || !gps[piexif.GPSIFD.GPSLongitude]) return null;
+  const lat = dmsToDecimal(gps[piexif.GPSIFD.GPSLatitude], gps[piexif.GPSIFD.GPSLatitudeRef]);
+  const lon = dmsToDecimal(gps[piexif.GPSIFD.GPSLongitude], gps[piexif.GPSIFD.GPSLongitudeRef]);
+  return {lat, lon};
+}
+
+// Returns "YYYYMMDD_HHMMSS" from EXIF DateTimeOriginal (preferred) or DateTime, or null.
+function readExifDateTime(exifDict){
+  const raw = (exifDict.Exif && exifDict.Exif[piexif.ExifIFD.DateTimeOriginal])
+    || (exifDict['0th'] && exifDict['0th'][piexif.ImageIFD.DateTime])
+    || null;
+  if(!raw) return null;
+  const m = String(raw).match(/^(\d{4}):(\d{2}):(\d{2}) (\d{2}):(\d{2}):(\d{2})/);
+  if(!m) return null;
+  return `${m[1]}${m[2]}${m[3]}_${m[4]}${m[5]}${m[6]}`;
+}
+
+// ---------- MP4/MOV GPS support ----------
+// GPS is stored as a QuickTime "©xyz" user-data atom under moov/udta, holding an
+// ISO 6709 string like "+37.178251-3.593335/". This is the convention iPhone (and
+// most tools, incl. exiftool) read/write, so it's the broadest-compatibility choice.
+//
+// Growing/replacing that atom changes moov's size. If moov comes BEFORE mdat in the
+// file (the common "fast-start" layout used by iPhone), every absolute chunk offset
+// in stco/co64 (which point into mdat) must be shifted by the same size delta, or
+// playback breaks. If mdat comes first, no shift is needed. Fragmented MP4 (moof
+// present) is not supported and is rejected explicitly rather than risking corruption.
+
+const MP4_CONTAINER_TYPES = new Set(['moov','trak','mdia','minf','stbl','udta']);
+const XYZ_TYPE = '\u00A9xyz';
+
+function fourCCFromBytes(bytes, offset){
+  return String.fromCharCode(bytes[offset], bytes[offset+1], bytes[offset+2], bytes[offset+3]);
+}
+function fourCCToBytes(type){
+  const arr = new Uint8Array(4);
+  for(let i=0;i<4;i++) arr[i] = type.charCodeAt(i) & 0xff;
+  return arr;
+}
+function concatBytes(chunks){
+  let total = 0;
+  for(const c of chunks) total += c.length;
+  const out = new Uint8Array(total);
+  let off = 0;
+  for(const c of chunks){ out.set(c, off); off += c.length; }
+  return out;
+}
+
+// Parse sibling boxes in [start,end) of `bytes`. Containers we care about are
+// recursed into; everything else is kept as opaque raw bytes and passed through
+// unchanged on serialize. stco/co64 are parsed into offset arrays so they can be
+// patched, then re-serialized.
+function parseBoxes(bytes, start, end){
+  const boxes = [];
+  let off = start;
+  const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  while(off + 8 <= end){
+    const size32 = dv.getUint32(off, false);
+    const type = fourCCFromBytes(bytes, off + 4);
+    let headerSize = 8;
+    let boxEnd;
+    if(size32 === 1){
+      if(off + 16 > end) break;
+      const hi = dv.getUint32(off + 8, false);
+      const lo = dv.getUint32(off + 12, false);
+      const bigSize = (BigInt(hi) << 32n) | BigInt(lo);
+      headerSize = 16;
+      boxEnd = off + Number(bigSize);
+    }else if(size32 === 0){
+      boxEnd = end;
+    }else{
+      boxEnd = off + size32;
+    }
+    if(boxEnd > end || boxEnd <= off) break; // malformed - stop parsing this level
+
+    const payloadStart = off + headerSize;
+    const node = { type, start: off, end: boxEnd };
+
+    if(MP4_CONTAINER_TYPES.has(type)){
+      node.isContainer = true;
+      node.children = parseBoxes(bytes, payloadStart, boxEnd);
+    }else if(type === 'stco' || type === 'co64'){
+      node.isContainer = false;
+      node.boxKind = type;
+      node.version = bytes[payloadStart];
+      node.flags = (bytes[payloadStart+1]<<16) | (bytes[payloadStart+2]<<8) | bytes[payloadStart+3];
+      const entryCount = dv.getUint32(payloadStart + 4, false);
+      const entries = [];
+      let p = payloadStart + 8;
+      if(type === 'stco'){
+        for(let i=0;i<entryCount;i++){ entries.push(dv.getUint32(p, false)); p += 4; }
+      }else{
+        for(let i=0;i<entryCount;i++){ entries.push(dv.getBigUint64(p, false)); p += 8; }
+      }
+      node.entries = entries;
+    }else{
+      node.isContainer = false;
+      node.raw = bytes.slice(payloadStart, boxEnd);
+    }
+    boxes.push(node);
+    off = boxEnd;
+  }
+  return boxes;
+}
+
+function serializeBoxNode(node){
+  let payloadBytes;
+  if(node.isContainer){
+    payloadBytes = concatBytes(node.children.map(serializeBoxNode));
+  }else if(node.boxKind === 'stco'){
+    const payload = new Uint8Array(8 + node.entries.length * 4);
+    const dv = new DataView(payload.buffer);
+    payload[0] = node.version;
+    payload[1] = (node.flags>>16)&0xff; payload[2] = (node.flags>>8)&0xff; payload[3] = node.flags&0xff;
+    dv.setUint32(4, node.entries.length, false);
+    for(let i=0;i<node.entries.length;i++) dv.setUint32(8 + i*4, node.entries[i] >>> 0, false);
+    payloadBytes = payload;
+  }else if(node.boxKind === 'co64'){
+    const payload = new Uint8Array(8 + node.entries.length * 8);
+    const dv = new DataView(payload.buffer);
+    payload[0] = node.version;
+    payload[1] = (node.flags>>16)&0xff; payload[2] = (node.flags>>8)&0xff; payload[3] = node.flags&0xff;
+    dv.setUint32(4, node.entries.length, false);
+    for(let i=0;i<node.entries.length;i++) dv.setBigUint64(8 + i*8, node.entries[i], false);
+    payloadBytes = payload;
+  }else{
+    payloadBytes = node.raw;
+  }
+  const header = new Uint8Array(8);
+  const hdv = new DataView(header.buffer);
+  hdv.setUint32(0, 8 + payloadBytes.length, false);
+  header.set(fourCCToBytes(node.type), 4);
+  return concatBytes([header, payloadBytes]);
+}
+
+function findChild(node, type){
+  return (node.children || []).find(c => c.type === type) || null;
+}
+function collectStcoCo64(node, out){
+  if(node.boxKind === 'stco' || node.boxKind === 'co64'){ out.push(node); return; }
+  if(node.isContainer){
+    for(const c of node.children) collectStcoCo64(c, out);
+  }
+}
+
+function buildXyzPayload(lat, lon){
+  const text = `${lat>=0?'+':'-'}${Math.abs(lat).toFixed(6)}${lon>=0?'+':'-'}${Math.abs(lon).toFixed(6)}/`;
+  const textBytes = new TextEncoder().encode(text);
+  const payload = new Uint8Array(4 + textBytes.length);
+  const dv = new DataView(payload.buffer);
+  dv.setUint16(0, textBytes.length, false);
+  dv.setUint16(2, 0x0000, false); // language code
+  payload.set(textBytes, 4);
+  return payload;
+}
+function parseIso6709(text){
+  const m = text.match(/^([+-]\d+(?:\.\d+)?)([+-]\d+(?:\.\d+)?)/);
+  if(!m) return null;
+  const lat = parseFloat(m[1]);
+  const lon = parseFloat(m[2]);
+  if(!isValidCoord(lat, lon)) return null;
+  return { lat, lon };
+}
+function decodeXyzNode(node){
+  if(!node.raw || node.raw.length < 4) return null;
+  const dv = new DataView(node.raw.buffer, node.raw.byteOffset, node.raw.byteLength);
+  const len = dv.getUint16(0, false);
+  const textBytes = node.raw.slice(4, 4 + len);
+  const text = new TextDecoder('utf-8').decode(textBytes);
+  return parseIso6709(text);
+}
+
+async function readMp4Gps(file){
+  try{
+    const buffer = await file.arrayBuffer();
+    const bytes = new Uint8Array(buffer);
+    const top = parseBoxes(bytes, 0, bytes.length);
+    const moov = top.find(b => b.type === 'moov');
+    if(!moov) return null;
+    const udta = findChild(moov, 'udta');
+    if(!udta) return null;
+    const xyz = findChild(udta, XYZ_TYPE);
+    if(!xyz) return null;
+    return decodeXyzNode(xyz);
+  }catch(e){
+    return null;
+  }
+}
+
+// Returns "YYYYMMDD_HHMMSS" from moov/mvhd's creation_time (QuickTime epoch, 1904-01-01),
+// converted to the browser's local time, or null if unavailable/unparseable.
+async function readMp4CreationTime(file){
+  try{
+    const buffer = await file.arrayBuffer();
+    const bytes = new Uint8Array(buffer);
+    const top = parseBoxes(bytes, 0, bytes.length);
+    const moov = top.find(b => b.type === 'moov');
+    if(!moov) return null;
+    const mvhd = findChild(moov, 'mvhd');
+    if(!mvhd || !mvhd.raw || mvhd.raw.length < 12) return null;
+    const dv = new DataView(mvhd.raw.buffer, mvhd.raw.byteOffset, mvhd.raw.byteLength);
+    const version = mvhd.raw[0];
+    let creationTimeSec;
+    if(version === 1){
+      if(mvhd.raw.length < 20) return null;
+      creationTimeSec = Number(dv.getBigUint64(4, false));
+    }else{
+      creationTimeSec = dv.getUint32(4, false);
+    }
+    if(!creationTimeSec) return null;
+    const QT_EPOCH_OFFSET = 2082844800; // seconds between 1904-01-01 and 1970-01-01
+    const unixMs = (creationTimeSec - QT_EPOCH_OFFSET) * 1000;
+    if(unixMs <= 0) return null;
+    const d = new Date(unixMs);
+    if(isNaN(d.getTime())) return null;
+    const pad = n => String(n).padStart(2, '0');
+    return `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
+  }catch(e){
+    return null;
+  }
+}
+
+async function writeMp4Gps(item, lat, lon){
+  const file = await item.handle.getFile();
+  const buffer = await file.arrayBuffer();
+  const bytes = new Uint8Array(buffer);
+
+  const top = parseBoxes(bytes, 0, bytes.length);
+  if(top.some(b => b.type === 'moof')){
+    throw new Error('프래그먼트 MP4(스트리밍용) 형식은 지원하지 않습니다.');
+  }
+  const moovIdx = top.findIndex(b => b.type === 'moov');
+  if(moovIdx === -1){
+    throw new Error('moov 박스를 찾을 수 없는 파일입니다.');
+  }
+  const mdat = top.find(b => b.type === 'mdat');
+  const moov = top[moovIdx];
+
+  const newXyzPayload = buildXyzPayload(lat, lon);
+  const newXyzNode = { type: XYZ_TYPE, isContainer: false, raw: newXyzPayload };
+
+  let udta = findChild(moov, 'udta');
+  let delta;
+  if(udta){
+    const existingXyz = findChild(udta, XYZ_TYPE);
+    if(existingXyz){
+      const oldSize = 8 + existingXyz.raw.length;
+      const newSize = 8 + newXyzPayload.length;
+      delta = newSize - oldSize;
+      udta.children[udta.children.indexOf(existingXyz)] = newXyzNode;
+    }else{
+      delta = 8 + newXyzPayload.length;
+      udta.children.push(newXyzNode);
+    }
+  }else{
+    delta = 8 + (8 + newXyzPayload.length); // new udta header + new xyz box
+    moov.children.push({ type: 'udta', isContainer: true, children: [newXyzNode] });
+  }
+
+  const needsOffsetPatch = !!mdat && moov.start < mdat.start;
+  if(needsOffsetPatch){
+    const targets = [];
+    collectStcoCo64(moov, targets);
+    for(const t of targets){
+      if(t.boxKind === 'stco'){
+        t.entries = t.entries.map(v => (v + delta) >>> 0);
+      }else{
+        t.entries = t.entries.map(v => v + BigInt(delta));
+      }
+    }
+  }
+
+  const newMoovBytes = serializeBoxNode(moov);
+  const newBytes = concatBytes([bytes.slice(0, moov.start), newMoovBytes, bytes.slice(moov.end)]);
+
+  const writable = await item.handle.createWritable();
+  await writable.write(newBytes.buffer);
+  await writable.close();
+}
+
+function generateVideoThumbnail(file){
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    const video = document.createElement('video');
+    video.preload = 'metadata';
+    video.muted = true;
+    video.playsInline = true;
+    video.src = url;
+    let settled = false;
+    const finish = (result) => {
+      if(settled) return;
+      settled = true;
+      URL.revokeObjectURL(url);
+      resolve(result);
+    };
+    const timeout = setTimeout(() => finish(null), 5000);
+    video.addEventListener('loadeddata', () => {
+      try{ video.currentTime = Math.min(0.3, (video.duration || 1) / 2); }
+      catch(e){ clearTimeout(timeout); finish(null); }
+    });
+    video.addEventListener('seeked', () => {
+      try{
+        const size = 280; // capture larger than the 1x display size so 4x view stays sharp
+        const canvas = document.createElement('canvas');
+        canvas.width = size; canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        const vw = video.videoWidth || size, vh = video.videoHeight || size;
+        const scale = Math.max(size / vw, size / vh);
+        const dw = vw * scale, dh = vh * scale;
+        ctx.drawImage(video, (size - dw) / 2, (size - dh) / 2, dw, dh);
+        clearTimeout(timeout);
+        finish(canvas.toDataURL('image/jpeg', 0.7));
+      }catch(e){
+        clearTimeout(timeout);
+        finish(null);
+      }
+    });
+    video.addEventListener('error', () => { clearTimeout(timeout); finish(null); });
+  });
+}
+
+// ---------- filename normalization (YYYYMMDD_HHMMSS_설명부.ext) ----------
+function escapeHtml(s){
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function splitExt(name){
+  const dotIdx = name.lastIndexOf('.');
+  return {
+    stem: dotIdx >= 0 ? name.slice(0, dotIdx) : name,
+    ext: dotIdx >= 0 ? name.slice(dotIdx) : ''
+  };
+}
+
+// A filename already in canonical form is excluded from batch normalization.
+function isAlreadyCanonical(stem){
+  return /^\d{8}_\d{6}(_.*)?$/.test(stem);
+}
+
+// If the current filename is already canonical, returns {datePart, description}
+// (description is '' if there is none) - used to show/edit the description sub-line.
+function getCanonicalParts(item){
+  const { stem } = splitExt(item.name);
+  const extracted = extractDateTimeFromStem(stem);
+  if(!extracted) return null;
+  return { datePart: extracted.dateTime, description: extracted.description };
+}
+
+// '?' is not valid in filenames on most systems, so it's stored as '-q'.
+function sanitizeDescriptionForFilename(desc){
+  return desc.replace(/\?/g, '-q');
+}
+function displayDescriptionFromFilename(desc){
+  return desc.replace(/-q/g, '?');
+}
+
+// Tries to find a YYYYMMDD_HHMMSS date/time at the START of an arbitrary filename
+// stem, tolerating common separators ('.', '-', '_', '/', ' ', or none) between the
+// date/time components. Returns {dateTime, description} or null if none is found.
+function extractDateTimeFromStem(stem){
+  const re = /^(\d{4})[.\-_/]?(\d{2})[.\-_/]?(\d{2})[ .\-_+]?(\d{2})[.\-_:]?(\d{2})[.\-_:]?(\d{2})/;
+  const m = stem.match(re);
+  if(!m) return null;
+  const year = +m[1], mon = +m[2], day = +m[3], hh = +m[4], mi = +m[5], ss = +m[6];
+  if(year < 1990 || year > 2099) return null;
+  if(mon < 1 || mon > 12 || day < 1 || day > 31 || hh > 23 || mi > 59 || ss > 59) return null;
+  const rest = stem.slice(m[0].length);
+  const sepRun = rest.match(/^[ \-_+]+/);
+  const description = sepRun ? rest.slice(sepRun[0].length) : rest;
+  return {
+    dateTime: `${m[1]}${m[2]}${m[3]}_${m[4]}${m[5]}${m[6]}`,
+    description
+  };
+}
+
+// For a single item, returns the proposed canonical name, or null if no change is
+// needed (already canonical / no change), or {unresolvable:true} if no date/time
+// could be determined at all (neither from the filename nor from EXIF/mvhd).
+function isValidDateTimeDigits(d14){
+  const year = +d14.slice(0,4), mon = +d14.slice(4,6), day = +d14.slice(6,8);
+  const hh = +d14.slice(8,10), mi = +d14.slice(10,12), ss = +d14.slice(12,14);
+  return year >= 1990 && year <= 2099 && mon >= 1 && mon <= 12 && day >= 1 && day <= 31
+    && hh <= 23 && mi <= 59 && ss <= 59;
+}
+
+// Camera-generated filenames (DJI Action, Instagram/Insta360-style "루나" clips, etc.)
+// often embed the recording date/time AND a short internal code as underscore-delimited
+// tokens in the middle of the name, e.g. DJI_20260222113531_0001_D_설명 or
+// VID_20260817_012611_003_설명. Since the fallback path already prepends a real
+// capture date/time, these embedded tokens are redundant/noise - this strips:
+//  - a single 14-digit YYYYMMDDHHMMSS token
+//  - an 8-digit date token immediately followed by a 6-digit time token
+//  - a lone single-letter token right after a numeric (sequence-number) token
+function stripEmbeddedDateTokens(stem){
+  const tokens = stem.split('_');
+  const cleaned = [];
+  for(let i = 0; i < tokens.length; i++){
+    const tok = tokens[i];
+    if(/^\d{14}$/.test(tok) && isValidDateTimeDigits(tok)) continue;
+    if(/^\d{8}$/.test(tok) && i+1 < tokens.length && /^\d{6}$/.test(tokens[i+1]) && isValidDateTimeDigits(tok + tokens[i+1])){
+      i++; // also consume the time token
+      continue;
+    }
+    if(/^[A-Za-z]$/.test(tok) && cleaned.length > 0 && /^\d+$/.test(cleaned[cleaned.length-1])) continue;
+    cleaned.push(tok);
+  }
+  return cleaned.join('_');
+}
+
+function computeCanonicalName(item){
+  const { stem, ext } = splitExt(item.name);
+  if(isAlreadyCanonical(stem)) return null;
+
+  const extracted = extractDateTimeFromStem(stem);
+  let datePart, description;
+  if(extracted){
+    datePart = extracted.dateTime;
+    description = extracted.description;
+  }else if(item.exifDateTime){
+    datePart = item.exifDateTime;
+    description = stripEmbeddedDateTokens(stem); // drop redundant embedded date/code tokens
+  }else{
+    return { unresolvable: true };
+  }
+  description = sanitizeDescriptionForFilename(description);
+  const newStem = description ? `${datePart}_${description}` : datePart;
+  const newName = newStem + ext;
+  if(newName === item.name) return null;
+  return { newName };
+}
+
+function computeRenamePlan(){
+  const plan = [];
+  let skippedNoDate = 0;
+  for(const item of items){
+    if(item.kind !== 'image' && item.kind !== 'png' && item.kind !== 'video') continue;
+    const result = computeCanonicalName(item);
+    if(!result) continue;
+    if(result.unresolvable){ skippedNoDate++; continue; }
+    plan.push({ item, newName: result.newName });
+  }
+  return { plan, skippedNoDate };
+}
+
+// ---------- input parsing ----------
+function parseCoordInput(raw){
+  if(!raw) return null;
+  const str = raw.trim();
+
+  // 1) "lat, lon" plain
+  const plain = str.match(/^(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)$/);
+  if(plain){
+    const lat = parseFloat(plain[1]);
+    const lon = parseFloat(plain[2]);
+    if(isValidCoord(lat, lon)) return {lat, lon};
+  }
+
+  // 2) google maps URL
+  if(/maps/i.test(str) || /^https?:\/\//i.test(str)){
+    let decoded = str;
+    try{ decoded = decodeURIComponent(str); }catch(e){}
+
+    // prefer pin coordinate !3d<lat>!4d<lon>
+    const pin = decoded.match(/!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/);
+    if(pin){
+      const lat = parseFloat(pin[1]);
+      const lon = parseFloat(pin[2]);
+      if(isValidCoord(lat, lon)) return {lat, lon};
+    }
+    // fallback to map center @lat,lon,zoom
+    const at = decoded.match(/@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/);
+    if(at){
+      const lat = parseFloat(at[1]);
+      const lon = parseFloat(at[2]);
+      if(isValidCoord(lat, lon)) return {lat, lon};
+    }
+  }
+  return null;
+}
+function isValidCoord(lat, lon){
+  return Number.isFinite(lat) && Number.isFinite(lon) &&
+    lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180;
+}
+function fmtGps(gps){
+  if(!gps) return '';
+  return gps.lat.toFixed(6) + ', ' + gps.lon.toFixed(6);
+}
+
+// ---------- folder loading ----------
+async function pickFolder(){
+  let handle;
+  try{
+    handle = await window.showDirectoryPicker({ mode: 'readwrite' });
+  }catch(e){
+    return; // user cancelled
+  }
+  dirHandle = handle;
+  reopenBanner.style.display = 'none';
+  await saveDirHandle(handle);
+  await loadFolderContents();
+}
+
+async function loadFolderContents(){
+  folderNameEl.textContent = '📂 ' + dirHandle.name;
+  items = [];
+  listEl.innerHTML = '<div class="empty-state">폴더를 읽는 중...</div>';
+
+  let idx = 0;
+  for await (const entry of dirHandle.values()){
+    if(entry.kind === 'file'){
+      const kind = getKind(entry.name);
+      if(kind){
+        items.push({ id: idx++, name: entry.name, handle: entry, kind, gps: null, thumbUrl: null, loaded:false, selected:false });
+      }
+    }
+  }
+  items.sort((a,b)=>a.name.localeCompare(b.name));
+  fileCountEl.textContent = items.length + '개 파일 (사진/동영상)';
+
+  selectAllCheckbox.checked = false;
+  updateSelectedCount();
+
+  if(items.length === 0){
+    listEl.innerHTML = '<div class="empty-state">이 폴더에서 JPG/JPEG, PNG, MP4, MOV 파일을 찾지 못했습니다.</div>';
+    selbar.style.display = 'none';
+    return;
+  }
+  selbar.style.display = 'flex';
+
+  renderList();
+  // load thumbnails + gps async, one by one
+  for(const item of items){
+    await loadItemMeta(item);
+    renderRow(item);
+  }
+}
+
+// ---------- remembering the last-used folder (IndexedDB) ----------
+const DB_NAME = 'photo-gps-editor';
+const STORE_NAME = 'handles';
+const HANDLE_KEY = 'lastDir';
+
+function openDb(){
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, 1);
+    req.onupgradeneeded = () => req.result.createObjectStore(STORE_NAME);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+async function saveDirHandle(handle){
+  try{
+    const db = await openDb();
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, 'readwrite');
+      tx.objectStore(STORE_NAME).put(handle, HANDLE_KEY);
+      tx.oncomplete = resolve;
+      tx.onerror = () => reject(tx.error);
+    });
+  }catch(e){ console.warn('마지막 폴더 저장 실패', e); }
+}
+async function loadSavedDirHandle(){
+  try{
+    const db = await openDb();
+    return await new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, 'readonly');
+      const req = tx.objectStore(STORE_NAME).get(HANDLE_KEY);
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = () => reject(req.error);
+    });
+  }catch(e){ return null; }
+}
+
+let pendingReopenHandle = null;
+
+function showReopenBanner(handle){
+  pendingReopenHandle = handle;
+  document.getElementById('reopenName').textContent = handle.name;
+  reopenBanner.style.display = 'flex';
+}
+
+document.getElementById('reopenBtn').addEventListener('click', async () => {
+  if(!pendingReopenHandle) return;
+  try{
+    const perm = await pendingReopenHandle.requestPermission({ mode: 'readwrite' });
+    if(perm === 'granted'){
+      dirHandle = pendingReopenHandle;
+      reopenBanner.style.display = 'none';
+      await loadFolderContents();
+    }
+  }catch(e){
+    alert('폴더를 다시 열지 못했습니다: ' + e.message);
+  }
+});
+document.getElementById('reopenDismiss').addEventListener('click', () => {
+  reopenBanner.style.display = 'none';
+});
+
+(async function tryAutoOpenLastFolder(){
+  const handle = await loadSavedDirHandle();
+  if(!handle) return;
+  try{
+    const perm = await handle.queryPermission({ mode: 'readwrite' });
+    if(perm === 'granted'){
+      dirHandle = handle;
+      await loadFolderContents();
+    }else{
+      showReopenBanner(handle); // browser requires a click to re-grant permission
+    }
+  }catch(e){
+    // handle is stale (folder moved/deleted) - ignore, user can pick a new one
+  }
+})();
+
+async function loadItemMeta(item){
+  try{
+    const file = await item.handle.getFile();
+    if(item.kind === 'video'){
+      item.thumbUrl = await generateVideoThumbnail(file);
+      item.gps = await readMp4Gps(file);
+      item.exifDateTime = await readMp4CreationTime(file);
+    }else if(item.kind === 'png'){
+      item.thumbUrl = URL.createObjectURL(file);
+      item.gps = null; // PNG has no reliable EXIF GPS support in this app
+      item.exifDateTime = null;
+    }else{
+      item.thumbUrl = URL.createObjectURL(file);
+      const buffer = await file.arrayBuffer();
+      try{
+        const binary = arrayBufferToBinaryString(buffer);
+        const exifDict = piexif.load(binary);
+        item.gps = readGpsFromExif(exifDict);
+        item.exifDateTime = readExifDateTime(exifDict);
+      }catch(e){
+        item.gps = null; // not a valid jpeg / no exif segment
+        item.exifDateTime = null;
+      }
+    }
+    item.loaded = true;
+  }catch(e){
+    item.loaded = true;
+    item.error = 'read-fail';
+  }
+}
+
+function renderList(){
+  listEl.innerHTML = '';
+  const head = document.createElement('div');
+  head.className = 'row head';
+  head.innerHTML = '<div></div><div>썸네일</div><div>파일명</div><div>GPS 위치 (입력/붙여넣기)</div><div>지도</div><div>적용</div>';
+  listEl.appendChild(head);
+  for(const item of items){
+    const row = document.createElement('div');
+    row.className = 'row';
+    listEl.appendChild(row);
+    item.el = row; // direct reference, no id lookups (filenames may collide once sanitized)
+    renderRow(item);
+  }
+}
+
+function renderRow(item){
+  const row = item.el;
+  if(!row) return;
+
+  const thumbHtml = item.thumbUrl
+    ? `<img class="thumb" src="${item.thumbUrl}" alt="">`
+    : `<div class="thumb thumb-fallback">${item.kind === 'video' ? '🎬' : '🖼️'}</div>`;
+
+  const canon = getCanonicalParts(item);
+  let descHtml = '';
+  if(canon){
+    const displayDesc = displayDescriptionFromFilename(canon.description);
+    descHtml = displayDesc
+      ? `<div class="fdesc" data-role="fdesc-display" title="더블클릭하여 설명 수정">${escapeHtml(displayDesc)}</div>`
+      : `<div class="fdesc" data-role="fdesc-display" title="더블클릭하여 설명 추가"><span class="fdesc-empty">설명 없음</span></div>`;
+  }
+
+  row.innerHTML = `
+    <input type="checkbox" class="rowcheck">
+    ${thumbHtml}
+    <div class="fname-cell">
+      <div class="fname" data-role="fname-display" title="${item.name} (4x 모드에서 더블클릭하여 이름 수정)">${escapeHtml(item.name)}</div>
+      ${descHtml}
+    </div>
+    <div class="gpscell">
+      <input type="text" class="rowinput" placeholder="좌표 또는 구글맵 URL 붙여넣기">
+      <div class="msg"></div>
+    </div>
+    <button class="map-btn secondary">🗺️ 지도</button>
+    <button class="apply-btn">적용</button>
+  `;
+
+  item.checkboxEl = row.querySelector('.rowcheck');
+  item.thumbEl = row.querySelector('.thumb');
+  item.fnameEl = row.querySelector('[data-role="fname-display"]');
+  item.fdescEl = row.querySelector('[data-role="fdesc-display"]');
+  item.msgEl = row.querySelector('.msg');
+  item.inputEl = row.querySelector('.rowinput');
+  item.mapBtn = row.querySelector('.map-btn');
+  item.applyBtn = row.querySelector('.apply-btn');
+
+  item.inputEl.value = item.gps ? fmtGps(item.gps) : '';
+
+  if(item.kind === 'png'){
+    item.inputEl.disabled = true;
+    item.inputEl.placeholder = 'PNG는 GPS 미지원';
+    item.mapBtn.disabled = true;
+    item.applyBtn.disabled = true;
+  }
+
+  item.thumbEl.addEventListener('click', () => {
+    if(listEl.classList.contains('thumb-4x')) openPreview(item);
+  });
+  item.fnameEl.addEventListener('dblclick', () => {
+    if(listEl.classList.contains('thumb-4x')) startEditFilename(item);
+  });
+  if(item.fdescEl){
+    item.fdescEl.addEventListener('dblclick', () => {
+      if(listEl.classList.contains('thumb-4x')) startEditDescription(item);
+    });
+  }
+
+  item.checkboxEl.checked = !!item.selected;
+  item.checkboxEl.addEventListener('change', () => {
+    item.selected = item.checkboxEl.checked;
+    if(!item.selected) selectAllCheckbox.checked = false;
+    updateSelectedCount();
+  });
+  item.mapBtn.addEventListener('click', () => {
+    const parsed = parseCoordInput(item.inputEl.value);
+    if(!parsed){
+      setMsg(item, '지도에서 볼 좌표가 없습니다. 먼저 좌표를 입력하세요.', false);
+      return;
+    }
+    window.open(`https://www.google.com/maps?q=${parsed.lat},${parsed.lon}`, '_blank', 'noopener');
+  });
+  item.applyBtn.addEventListener('click', () => applyToItem(item));
+}
+
+function setMsg(item, text, ok){
+  if(!item.msgEl) return;
+  item.msgEl.textContent = text;
+  item.msgEl.className = 'msg ' + (ok ? 'ok' : 'err');
+}
+
+// ---------- apply single ----------
+async function applyToItem(item){
+  const parsed = parseCoordInput(item.inputEl.value);
+  if(!parsed){
+    setMsg(item, '좌표 형식을 인식하지 못했습니다.', false);
+    return;
+  }
+  item.applyBtn.disabled = true;
+  try{
+    await writeGpsToFile(item, parsed.lat, parsed.lon);
+    item.gps = parsed;
+    renderRow(item); // rebuilds row + refreshes msgEl/inputEl/applyBtn refs
+    setMsg(item, '적용 완료', true);
+  }catch(e){
+    setMsg(item, '쓰기 실패: ' + e.message, false);
+    item.applyBtn.disabled = false;
+  }
+}
+
+async function writeGpsToFile(item, lat, lon){
+  if(item.kind === 'video'){
+    await writeMp4Gps(item, lat, lon);
+  }else if(item.kind === 'png'){
+    throw new Error('PNG 파일은 GPS 쓰기를 지원하지 않습니다.');
+  }else{
+    await writeJpegGps(item, lat, lon);
+  }
+}
+
+async function writeJpegGps(item, lat, lon){
+  const file = await item.handle.getFile();
+  const buffer = await file.arrayBuffer();
+  const binary = arrayBufferToBinaryString(buffer);
+  let exifDict;
+  try{
+    exifDict = piexif.load(binary);
+  }catch(e){
+    exifDict = {"0th":{}, "Exif":{}, "GPS":{}, "1st":{}, "thumbnail":null};
+  }
+  exifDict.GPS = buildGpsIfd(lat, lon);
+  const exifBytes = piexif.dump(exifDict);
+  const newBinary = piexif.insert(exifBytes, binary);
+  const newBuffer = binaryStringToArrayBuffer(newBinary);
+
+  const writable = await item.handle.createWritable();
+  await writable.write(newBuffer);
+  await writable.close();
+
+  // refresh cached thumb since file changed on disk
+  if(item.thumbUrl) URL.revokeObjectURL(item.thumbUrl);
+  const freshFile = await item.handle.getFile();
+  item.thumbUrl = URL.createObjectURL(freshFile);
+}
+
+// ---------- bulk apply (all or selected) ----------
+async function bulkApplyGroup(targetItems, label){
+  if(items.length === 0){
+    bulkMsg.textContent = '먼저 폴더를 선택하세요.';
+    bulkMsg.className = 'msg err';
+    return;
+  }
+  if(targetItems.length === 0){
+    bulkMsg.textContent = '선택된 파일이 없습니다.';
+    bulkMsg.className = 'msg err';
+    return;
+  }
+  const parsed = parseCoordInput(bulkInput.value);
+  if(!parsed){
+    bulkMsg.textContent = '좌표 형식을 인식하지 못했습니다.';
+    bulkMsg.className = 'msg err';
+    return;
+  }
+
+  const confirm1 = confirm(
+    `${label} ${targetItems.length}개 파일에 GPS 위치 (${fmtGps(parsed)})를 적용합니다.\n계속하시겠습니까?`
+  );
+  if(!confirm1) return;
+
+  const confirm2 = confirm(
+    `최종 확인입니다. 이 작업은 되돌릴 수 없습니다.\n${targetItems.length}개 파일을 정말 덮어쓰시겠습니까?`
+  );
+  if(!confirm2) return;
+
+  bulkApplyAllBtn.disabled = true;
+  bulkApplySelectedBtn.disabled = true;
+  let ok = 0, fail = 0;
+  for(const item of targetItems){
+    try{
+      await writeGpsToFile(item, parsed.lat, parsed.lon);
+      item.gps = parsed;
+      renderRow(item);
+      ok++;
+    }catch(e){
+      fail++;
+    }
+    bulkMsg.textContent = `진행 중... ${ok+fail}/${targetItems.length}`;
+    bulkMsg.className = 'msg';
+  }
+  bulkApplyAllBtn.disabled = false;
+  updateSelectedCount(); // restores correct disabled state for the selected-apply button
+  bulkMsg.textContent = `완료: 성공 ${ok}건, 실패 ${fail}건`;
+  bulkMsg.className = fail > 0 ? 'msg err' : 'msg ok';
+}
+
+// ---------- GPS correction map (Leaflet / OpenStreetMap) ----------
+// Same-coordinate photos are shown as ONE numbered marker ("move all" - dragging it
+// moves every photo still in the group together). From the group's file list the
+// user can pull a single photo out to move it independently ("move 1"); it then gets
+// its own marker and its own entry in the changes list.
+let mapInstance = null;
+let mapTargetItems = [];
+let mapGroups = {};           // coordKey -> { key, items:[...], peeled:Set<id> }
+let mapItemGroupKey = {};     // item.id -> coordKey
+let mapGroupMarkers = {};     // coordKey -> Leaflet marker (group's shared marker)
+let mapIndividualMarkers = {};// item.id -> Leaflet marker (peeled-out photos)
+let mapGroupMoves = {};       // coordKey -> {lat,lon} | undefined (group moved together)
+let mapPendingChanges = {};   // item.id -> {lat,lon} (source of truth for final apply)
+let mapSelectedKind = null;   // 'group' | 'single' | null
+let mapSelectedKey = null;    // coordKey or item.id
+
+const mapModal = document.getElementById('mapModal');
+const mapModalCount = document.getElementById('mapModalCount');
+const mapModalChanges = document.getElementById('mapModalChanges');
+const mapSelectedBox = document.getElementById('mapSelectedBox');
+const mapModalApplyBtn = document.getElementById('mapModalApplyBtn');
+const mapModalCloseBtn = document.getElementById('mapModalCloseBtn');
+
+function coordKey(gps){
+  return gps.lat.toFixed(6) + ',' + gps.lon.toFixed(6);
+}
+function makeDotIcon(color, size){
+  size = size || 18;
+  return L.divIcon({
+    className: 'gps-dot-icon',
+    html: `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${color};border:2px solid #fff;box-shadow:0 0 5px rgba(0,0,0,.6);cursor:pointer;"></div>`,
+    iconSize: [size, size],
+    iconAnchor: [size/2, size/2]
+  });
+}
+function makeGroupIcon(count, color, size){
+  size = size || 24;
+  const fontSize = Math.max(10, Math.round(size * 0.42));
+  const label = count > 1 ? count : '';
+  return L.divIcon({
+    className: 'gps-group-icon',
+    html: `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${color};border:2px solid #fff;box-shadow:0 0 5px rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;color:#0a1420;font-weight:800;font-size:${fontSize}px;cursor:pointer;">${label}</div>`,
+    iconSize: [size, size],
+    iconAnchor: [size/2, size/2]
+  });
+}
+
+function groupRemaining(group){
+  return group.items.filter(it => !group.peeled.has(it.id));
+}
+
+function openGpsMap(targetItems){
+  const withGps = targetItems.filter(i => i.gps);
+  if(withGps.length === 0){
+    alert('GPS 위치가 있는 파일이 없습니다. (선택한 파일 중에 위치가 없거나, 아직 폴더를 불러오지 않았을 수 있습니다.)');
+    return;
+  }
+  mapTargetItems = withGps;
+  mapPendingChanges = {};
+  mapGroupMoves = {};
+  mapSelectedKind = null;
+  mapSelectedKey = null;
+  mapSelectedBox.style.display = 'none';
+  mapModalCount.textContent = withGps.length + '개 위치';
+
+  mapGroups = {};
+  mapItemGroupKey = {};
+  for(const item of withGps){
+    const key = coordKey(item.gps);
+    if(!mapGroups[key]) mapGroups[key] = { key, items: [], peeled: new Set() };
+    mapGroups[key].items.push(item);
+    mapItemGroupKey[item.id] = key;
+  }
+
+  renderMapChangesPanel();
+  mapModal.style.display = 'flex';
+
+  if(mapInstance){ mapInstance.remove(); mapInstance = null; }
+  mapInstance = L.map('mapModalMap');
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '&copy; OpenStreetMap contributors'
+  }).addTo(mapInstance);
+
+  const centers = Object.values(mapGroups).map(g => L.latLng(g.items[0].gps.lat, g.items[0].gps.lon));
+
+  requestAnimationFrame(() => {
+    mapInstance.invalidateSize();
+    if(centers.length === 1){
+      mapInstance.setView(centers[0], 15);
+    }else{
+      mapInstance.fitBounds(centers, { padding: [50, 50], maxZoom: 16 });
+    }
+    mapGroupMarkers = {};
+    mapIndividualMarkers = {};
+    for(const key in mapGroups){
+      createGroupMarker(key);
+    }
+  });
+}
+
+function createGroupMarker(key){
+  const group = mapGroups[key];
+  const remaining = groupRemaining(group);
+  if(remaining.length === 0) return; // fully peeled out - nothing left to represent
+  const pos = mapGroupMoves[key]
+    ? [mapGroupMoves[key].lat, mapGroupMoves[key].lon]
+    : [remaining[0].gps.lat, remaining[0].gps.lon];
+  const moved = !!mapGroupMoves[key];
+  const selected = (mapSelectedKind === 'group' && mapSelectedKey === key);
+  const marker = L.marker(pos, {
+    draggable: true,
+    icon: makeGroupIcon(remaining.length, moved ? '#ffcc66' : '#5fb3ff', selected ? 32 : 24)
+  }).addTo(mapInstance);
+  const label = remaining.length > 1 ? `이 위치 사진 ${remaining.length}장` : remaining[0].name;
+  marker.bindTooltip(label, { direction: 'top', offset: [0, -14], className: 'gps-dot-tooltip' });
+  marker.on('click', () => selectGroup(key));
+  marker.on('dragend', () => {
+    const p = marker.getLatLng();
+    moveGroupTo(key, p.lat, p.lng);
+  });
+  mapGroupMarkers[key] = marker;
+}
+
+function createIndividualMarker(item){
+  const cur = mapPendingChanges[item.id] || item.gps;
+  const moved = !!mapPendingChanges[item.id];
+  const selected = (mapSelectedKind === 'single' && String(mapSelectedKey) === String(item.id));
+  const marker = L.marker([cur.lat, cur.lon], {
+    draggable: true,
+    icon: makeDotIcon(moved ? '#ffcc66' : '#5fb3ff', selected ? 28 : 18)
+  }).addTo(mapInstance);
+  marker.bindTooltip(item.name, { direction: 'top', offset: [0, -12], className: 'gps-dot-tooltip' });
+  marker.on('click', () => selectSingle(item.id));
+  marker.on('dragend', () => {
+    const p = marker.getLatLng();
+    moveSingleTo(item.id, p.lat, p.lng);
+  });
+  mapIndividualMarkers[item.id] = marker;
+}
+
+function moveGroupTo(key, lat, lon){
+  const group = mapGroups[key];
+  const remaining = groupRemaining(group);
+  mapGroupMoves[key] = { lat, lon };
+  for(const it of remaining) mapPendingChanges[it.id] = { lat, lon };
+  if(mapGroupMarkers[key]) mapGroupMarkers[key].setLatLng([lat, lon]);
+  mapInstance.panTo([lat, lon]);
+  refreshIcons();
+  renderMapChangesPanel();
+  if(mapSelectedKind === 'group' && mapSelectedKey === key) renderSelectedPanel();
+}
+
+function moveSingleTo(id, lat, lon){
+  mapPendingChanges[id] = { lat, lon };
+  if(mapIndividualMarkers[id]) mapIndividualMarkers[id].setLatLng([lat, lon]);
+  mapInstance.panTo([lat, lon]);
+  refreshIcons();
+  renderMapChangesPanel();
+  if(mapSelectedKind === 'single' && String(mapSelectedKey) === String(id)) renderSelectedPanel();
+}
+
+function peelItem(id){
+  const key = mapItemGroupKey[id];
+  const group = mapGroups[key];
+  const item = group.items.find(it => String(it.id) === String(id));
+  if(!item) return;
+  group.peeled.add(item.id);
+
+  if(mapGroupMarkers[key]){ mapInstance.removeLayer(mapGroupMarkers[key]); delete mapGroupMarkers[key]; }
+  createGroupMarker(key);   // redraw with the reduced remaining count (or omit if none left)
+  createIndividualMarker(item);
+  selectSingle(item.id);    // jump straight to editing the peeled-out photo
+  renderMapChangesPanel();
+}
+
+function selectGroup(key){
+  mapSelectedKind = 'group';
+  mapSelectedKey = key;
+  refreshIcons();
+  renderSelectedPanel();
+}
+function selectSingle(id){
+  mapSelectedKind = 'single';
+  mapSelectedKey = id;
+  refreshIcons();
+  renderSelectedPanel();
+}
+
+function refreshIcons(){
+  for(const key in mapGroupMarkers){
+    const group = mapGroups[key];
+    const remaining = groupRemaining(group);
+    const moved = !!mapGroupMoves[key];
+    const selected = (mapSelectedKind === 'group' && mapSelectedKey === key);
+    mapGroupMarkers[key].setIcon(makeGroupIcon(remaining.length, moved ? '#ffcc66' : '#5fb3ff', selected ? 32 : 24));
+  }
+  for(const id in mapIndividualMarkers){
+    const moved = !!mapPendingChanges[id];
+    const selected = (mapSelectedKind === 'single' && String(mapSelectedKey) === String(id));
+    mapIndividualMarkers[id].setIcon(makeDotIcon(moved ? '#ffcc66' : '#5fb3ff', selected ? 28 : 18));
+  }
+}
+
+function renderSelectedPanel(){
+  if(mapSelectedKind === 'group'){
+    const group = mapGroups[mapSelectedKey];
+    const remaining = groupRemaining(group);
+    if(remaining.length === 0){ mapSelectedBox.style.display = 'none'; return; }
+    const cur = mapGroupMoves[group.key] || { lat: remaining[0].gps.lat, lon: remaining[0].gps.lon };
+    mapSelectedBox.style.display = 'block';
+    mapSelectedBox.innerHTML = `
+      <div class="sub">이 위치의 사진 (${remaining.length}장)</div>
+      <div class="map-group-filelist">
+        ${remaining.map(it => `
+          <div class="map-group-file" data-id="${it.id}">
+            <span title="${it.name}">${it.name}</span>
+            <button class="peel-btn secondary">이 사진만 이동</button>
+          </div>`).join('')}
+      </div>
+      <div class="sub" style="margin-top:6px;">전체 ${remaining.length}장 함께 이동</div>
+      <input type="text" id="mapSelectedInput" value="${cur.lat.toFixed(6)}, ${cur.lon.toFixed(6)}" placeholder="좌표 또는 구글맵 URL">
+      <button id="mapSelectedMoveBtn">전체 이 좌표로 이동</button>
+    `;
+    mapSelectedBox.querySelectorAll('.peel-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const id = e.target.closest('.map-group-file').dataset.id;
+        peelItem(id);
+      });
+    });
+    document.getElementById('mapSelectedMoveBtn').addEventListener('click', () => {
+      const parsed = parseCoordInput(document.getElementById('mapSelectedInput').value);
+      if(!parsed){ alert('좌표 형식을 인식하지 못했습니다.'); return; }
+      moveGroupTo(group.key, parsed.lat, parsed.lon);
+    });
+  }else if(mapSelectedKind === 'single'){
+    const item = mapTargetItems.find(i => String(i.id) === String(mapSelectedKey));
+    if(!item){ mapSelectedBox.style.display = 'none'; return; }
+    const cur = mapPendingChanges[item.id] || item.gps;
+    mapSelectedBox.style.display = 'block';
+    mapSelectedBox.innerHTML = `
+      <div class="sub">선택된 파일 (1장만 이동)</div>
+      <div class="map-change-name" title="${item.name}">${item.name}</div>
+      <input type="text" id="mapSelectedInput" value="${cur.lat.toFixed(6)}, ${cur.lon.toFixed(6)}" placeholder="좌표 또는 구글맵 URL">
+      <button id="mapSelectedMoveBtn">이 좌표로 이동</button>
+    `;
+    document.getElementById('mapSelectedMoveBtn').addEventListener('click', () => {
+      const parsed = parseCoordInput(document.getElementById('mapSelectedInput').value);
+      if(!parsed){ alert('좌표 형식을 인식하지 못했습니다.'); return; }
+      moveSingleTo(item.id, parsed.lat, parsed.lon);
+    });
+  }else{
+    mapSelectedBox.style.display = 'none';
+  }
+}
+
+function closeGpsMap(){
+  mapModal.style.display = 'none';
+  if(mapInstance){ mapInstance.remove(); mapInstance = null; }
+  mapGroups = {};
+  mapItemGroupKey = {};
+  mapGroupMarkers = {};
+  mapIndividualMarkers = {};
+  mapGroupMoves = {};
+  mapPendingChanges = {};
+  mapTargetItems = [];
+  mapSelectedKind = null;
+  mapSelectedKey = null;
+  mapSelectedBox.style.display = 'none';
+}
+
+function renderMapChangesPanel(){
+  const rows = [];
+  for(const key in mapGroupMoves){
+    const group = mapGroups[key];
+    const remaining = groupRemaining(group);
+    if(remaining.length === 0) continue;
+    rows.push({ kind: 'group', key, count: remaining.length, coord: mapGroupMoves[key] });
+  }
+  for(const id in mapPendingChanges){
+    const key = mapItemGroupKey[id];
+    const group = mapGroups[key];
+    if(!group) continue;
+    if(group.peeled.has(Number(id)) || group.peeled.has(id) || group.items.length === 1){
+      const item = mapTargetItems.find(i => String(i.id) === String(id));
+      if(item) rows.push({ kind: 'single', id, name: item.name, coord: mapPendingChanges[id] });
+    }
+  }
+
+  mapModalApplyBtn.disabled = (rows.length === 0);
+  if(rows.length === 0){
+    mapModalChanges.innerHTML = '<div class="sub">아직 이동한 위치가 없습니다.</div>';
+    return;
+  }
+  mapModalChanges.innerHTML = rows.map(r => {
+    if(r.kind === 'group'){
+      return `
+        <div class="map-change-row" data-group="${r.key}">
+          <div class="map-change-name">그룹 이동 · ${r.count}장</div>
+          <div class="map-change-coord">${r.coord.lat.toFixed(6)}, ${r.coord.lon.toFixed(6)}</div>
+          <button class="map-change-revert secondary">되돌리기</button>
+        </div>`;
+    }
+    return `
+      <div class="map-change-row" data-single="${r.id}">
+        <div class="map-change-name" title="${r.name}">${r.name}</div>
+        <div class="map-change-coord">${r.coord.lat.toFixed(6)}, ${r.coord.lon.toFixed(6)}</div>
+        <button class="map-change-revert secondary">되돌리기</button>
+      </div>`;
+  }).join('');
+  mapModalChanges.querySelectorAll('.map-change-revert').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const row = e.target.closest('.map-change-row');
+      if(row.dataset.group) revertGroup(row.dataset.group);
+      else revertSingle(row.dataset.single);
+    });
+  });
+}
+
+function revertGroup(key){
+  const group = mapGroups[key];
+  delete mapGroupMoves[key];
+  const remaining = groupRemaining(group);
+  for(const it of remaining) delete mapPendingChanges[it.id];
+  if(mapGroupMarkers[key] && remaining.length > 0){
+    mapGroupMarkers[key].setLatLng([remaining[0].gps.lat, remaining[0].gps.lon]);
+  }
+  refreshIcons();
+  renderMapChangesPanel();
+  if(mapSelectedKind === 'group' && mapSelectedKey === key) renderSelectedPanel();
+}
+
+function revertSingle(id){
+  const item = mapTargetItems.find(i => String(i.id) === String(id));
+  delete mapPendingChanges[id];
+  if(mapIndividualMarkers[id] && item){
+    mapIndividualMarkers[id].setLatLng([item.gps.lat, item.gps.lon]);
+  }
+  refreshIcons();
+  renderMapChangesPanel();
+  if(mapSelectedKind === 'single' && String(mapSelectedKey) === String(id)) renderSelectedPanel();
+}
+
+mapModalCloseBtn.addEventListener('click', closeGpsMap);
+
+mapModalApplyBtn.addEventListener('click', async () => {
+  const ids = Object.keys(mapPendingChanges);
+  if(ids.length === 0) return;
+  const ok = confirm(`${ids.length}개 파일의 GPS 위치를 지도에서 옮긴 새 위치로 저장합니다.\n계속하시겠습니까?`);
+  if(!ok) return;
+
+  mapModalApplyBtn.disabled = true;
+  let okCount = 0, failCount = 0;
+  for(const id of ids){
+    const item = mapTargetItems.find(i => String(i.id) === String(id));
+    const c = mapPendingChanges[id];
+    try{
+      await writeGpsToFile(item, c.lat, c.lon);
+      item.gps = { lat: c.lat, lon: c.lon };
+      renderRow(item);
+      okCount++;
+    }catch(e){
+      failCount++;
+    }
+  }
+  alert(`완료: 성공 ${okCount}건, 실패 ${failCount}건`);
+  closeGpsMap();
+});
+
+// ---------- 4x-mode click-to-preview (large image / playable video, long side capped at 720px) ----------
+const previewModal = document.getElementById('previewModal');
+const previewName = document.getElementById('previewName');
+const previewMedia = document.getElementById('previewMedia');
+const previewCloseBtn = document.getElementById('previewCloseBtn');
+let previewObjectUrl = null;
+
+async function openPreview(item){
+  previewName.textContent = item.name;
+  previewMedia.innerHTML = '<div class="sub">불러오는 중...</div>';
+  previewModal.style.display = 'flex';
+
+  let file;
+  try{
+    file = await item.handle.getFile();
+  }catch(e){
+    previewMedia.innerHTML = '<div class="sub">파일을 열지 못했습니다.</div>';
+    return;
+  }
+  if(previewObjectUrl){ URL.revokeObjectURL(previewObjectUrl); previewObjectUrl = null; }
+  const url = URL.createObjectURL(file);
+  previewObjectUrl = url;
+
+  // Only max-width/max-height are set (no fixed width/height), so the browser scales
+  // the media proportionally until its longer side hits 720px - exactly "긴 변 720px, 비율 유지".
+  if(item.kind === 'video'){
+    previewMedia.innerHTML = `<video id="previewVideoEl" controls playsinline style="max-width:720px;max-height:720px;width:auto;height:auto;display:block;border-radius:8px;background:#000;"></video>`;
+    const videoEl = document.getElementById('previewVideoEl');
+    videoEl.src = url;
+    try{ await videoEl.play(); }catch(e){ /* autoplay-with-sound blocked - user can press play on the controls */ }
+  }else{
+    previewMedia.innerHTML = `<img src="${url}" alt="" style="max-width:720px;max-height:720px;width:auto;height:auto;display:block;border-radius:8px;">`;
+  }
+}
+
+function closePreview(){
+  previewModal.style.display = 'none';
+  const videoEl = document.getElementById('previewVideoEl');
+  if(videoEl) videoEl.pause();
+  previewMedia.innerHTML = '';
+  if(previewObjectUrl){ URL.revokeObjectURL(previewObjectUrl); previewObjectUrl = null; }
+}
+
+previewCloseBtn.addEventListener('click', closePreview);
+previewModal.addEventListener('click', (e) => {
+  if(e.target === previewModal) closePreview(); // click on the backdrop, not the media itself
+});
+document.addEventListener('keydown', (e) => {
+  if(e.key === 'Escape' && previewModal.style.display === 'flex') closePreview();
+});
+
+// ---------- inline filename / description editing (4x mode only) ----------
+function requireMoveSupport(handle){
+  if(typeof handle.move !== 'function'){
+    throw new Error('이 브라우저는 파일명 변경(File System Access move)을 지원하지 않습니다. 최신 Chrome/Edge가 필요합니다.');
+  }
+}
+
+function startEditFilename(item){
+  const { stem, ext } = splitExt(item.name);
+  const wrap = document.createElement('div');
+  wrap.className = 'fname-edit';
+  wrap.innerHTML = `
+    <input type="text" class="fname-edit-input" value="${escapeHtml(stem)}">
+    <span class="fname-edit-ext">${escapeHtml(ext)}</span>
+    <button class="fname-edit-ok">✓</button>
+    <button class="fname-edit-cancel secondary">✕</button>
+  `;
+  item.fnameEl.replaceWith(wrap);
+  const input = wrap.querySelector('.fname-edit-input');
+  input.focus();
+  input.select();
+
+  const cancel = () => renderRow(item);
+  const commit = async () => {
+    const newStem = input.value.trim();
+    if(!newStem){ alert('파일명을 입력하세요.'); return; }
+    const newName = newStem + ext;
+    if(newName !== item.name){
+      try{
+        requireMoveSupport(item.handle);
+        await item.handle.move(newName);
+        item.name = newName;
+      }catch(e){
+        alert('파일명 변경 실패: ' + e.message);
+        cancel();
+        return;
+      }
+    }
+    items.sort((a,b) => a.name.localeCompare(b.name));
+    renderList();
+  };
+
+  wrap.querySelector('.fname-edit-ok').addEventListener('click', commit);
+  wrap.querySelector('.fname-edit-cancel').addEventListener('click', cancel);
+  input.addEventListener('keydown', (e) => {
+    if(e.key === 'Enter') commit();
+    if(e.key === 'Escape') cancel();
+  });
+}
+
+function startEditDescription(item){
+  const canon = getCanonicalParts(item);
+  if(!canon) return; // description editing only applies to already-canonical filenames
+  const currentDisplay = displayDescriptionFromFilename(canon.description);
+
+  const wrap = document.createElement('div');
+  wrap.className = 'fdesc-edit';
+  wrap.innerHTML = `
+    <input type="text" class="fdesc-edit-input" value="${escapeHtml(currentDisplay)}" placeholder="설명 입력">
+    <button class="fdesc-edit-ok">✓</button>
+    <button class="fdesc-edit-cancel secondary">✕</button>
+  `;
+  item.fdescEl.replaceWith(wrap);
+  const input = wrap.querySelector('.fdesc-edit-input');
+  input.focus();
+  input.select();
+
+  const cancel = () => renderRow(item);
+  const commit = async () => {
+    const { ext } = splitExt(item.name);
+    const newDescDisplay = input.value.trim();
+    const newDescStored = sanitizeDescriptionForFilename(newDescDisplay);
+    const newStem = newDescStored ? `${canon.datePart}_${newDescStored}` : canon.datePart;
+    const newName = newStem + ext;
+    if(newName !== item.name){
+      try{
+        requireMoveSupport(item.handle);
+        await item.handle.move(newName);
+        item.name = newName;
+      }catch(e){
+        alert('설명 변경 실패: ' + e.message);
+        cancel();
+        return;
+      }
+    }
+    renderRow(item); // date/time prefix is unchanged, so sort order doesn't need recomputing
+  };
+
+  wrap.querySelector('.fdesc-edit-ok').addEventListener('click', commit);
+  wrap.querySelector('.fdesc-edit-cancel').addEventListener('click', cancel);
+  input.addEventListener('keydown', (e) => {
+    if(e.key === 'Enter') commit();
+    if(e.key === 'Escape') cancel();
+  });
+}
+
+// ---------- batch filename normalization ----------
+const renameModal = document.getElementById('renameModal');
+const renameModalCount = document.getElementById('renameModalCount');
+const renameModalBody = document.getElementById('renameModalBody');
+const renameApplyBtn = document.getElementById('renameApplyBtn');
+const renameCloseBtn = document.getElementById('renameCloseBtn');
+let renameCandidates = [];
+
+function openRenameModal(){
+  if(items.length === 0){
+    alert('먼저 폴더를 선택하세요.');
+    return;
+  }
+  const { plan, skippedNoDate } = computeRenamePlan();
+  renameCandidates = plan;
+
+  if(plan.length === 0){
+    alert(skippedNoDate > 0
+      ? `변경할 파일이 없습니다. (${skippedNoDate}개 파일은 파일명/촬영정보에서 날짜를 확인할 수 없어 자동 보정 대상에서 제외되었습니다.)`
+      : '변경할 파일이 없습니다. (모든 파일명이 이미 규칙에 맞습니다.)');
+    return;
+  }
+
+  renameModalCount.textContent = `${plan.length}개 파일` + (skippedNoDate > 0 ? ` (날짜 확인 불가 ${skippedNoDate}개 제외)` : '');
+  renameModalBody.innerHTML = plan.map(p => `
+    <div class="rename-row">
+      <span class="rename-old" title="${escapeHtml(p.item.name)}">${escapeHtml(p.item.name)}</span>
+      <span class="rename-arrow">→</span>
+      <span class="rename-new" title="${escapeHtml(p.newName)}">${escapeHtml(p.newName)}</span>
+    </div>`).join('');
+  renameApplyBtn.disabled = false;
+  renameModal.style.display = 'flex';
+}
+
+function closeRenameModal(){
+  renameModal.style.display = 'none';
+  renameCandidates = [];
+}
+
+renameCloseBtn.addEventListener('click', closeRenameModal);
+renameModal.addEventListener('click', (e) => {
+  if(e.target === renameModal) closeRenameModal();
+});
+
+renameApplyBtn.addEventListener('click', async () => {
+  if(renameCandidates.length === 0) return;
+  const ok = confirm(`${renameCandidates.length}개 파일명을 일괄 변경합니다.\n계속하시겠습니까?`);
+  if(!ok) return;
+
+  renameApplyBtn.disabled = true;
+  let okCount = 0, failCount = 0;
+  for(const { item, newName } of renameCandidates){
+    try{
+      requireMoveSupport(item.handle);
+      await item.handle.move(newName);
+      okCount++;
+    }catch(e){
+      failCount++;
+    }
+  }
+  closeRenameModal();
+  alert(`완료: 성공 ${okCount}건, 실패 ${failCount}건\n목록을 새로고침합니다.`);
+  if(dirHandle) await loadFolderContents(); // app refreshes the whole list itself, per spec
+});
+</script>
+</body>
+</html>
